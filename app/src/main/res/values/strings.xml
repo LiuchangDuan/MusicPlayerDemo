@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">MusicPlayer</string>
     <string name="searh_path">music</string>
+    <string name="duration">duration: %s</string>
 </resources>
