@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -36,8 +35,6 @@ public class Utils {
             in = res.openInputStream(albumUri);
             BitmapFactory.Options sBitmapOptions = new BitmapFactory.Options();
             bitmap = BitmapFactory.decodeStream(in, null, sBitmapOptions);
-        } catch (FileNotFoundException e) {
-
         } catch (IOException e) {
             e.printStackTrace();
         }

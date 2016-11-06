@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SeekBar;
@@ -39,6 +40,23 @@ public class MusicListActivity extends AppCompatActivity {
 
         mMusicList = new ArrayList<MusicItem>();
         mMusicListView = (ListView) findViewById(R.id.music_list);
+        MusicItemAdapter adapter = new MusicItemAdapter(this, R.layout.music_item, mMusicList);
+        mMusicListView.setAdapter(adapter);
+//        mMusicListView.setOnItemClickListener()
+
+        mPlayBtn = (Button) findViewById(R.id.play_btn);
+        mPreBtn = (Button) findViewById(R.id.pre_btn);
+        mNextBtn = (Button) findViewById(R.id.next_btn);
+
+        mMusicTitle = (TextView) findViewById(R.id.music_title);
+
+        mDurationTime = (TextView) findViewById(R.id.duration_time);
+        mPlayedTime = (TextView) findViewById(R.id.played_time);
+        mMusicSeekBar = (SeekBar) findViewById(R.id.seek_music);
+
+        mMusicUpdateTask = new MusicUpdateTask();
+        mMusicUpdateTask.execute();
+
 
     }
 
@@ -119,6 +137,21 @@ public class MusicListActivity extends AppCompatActivity {
         @Override
         protected void onProgressUpdate(MusicItem... values) {
             MusicItem data = values[0];
+
+            mMusicList.add(data);
+            MusicItemAdapter adapter = (MusicItemAdapter) mMusicListView.getAdapter();
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.play_btn:
+                break;
+            case R.id.next_btn:
+                break;
+            case R.id.pre_btn:
+                break;
         }
     }
 
