@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">MusicPlayer</string>
+    <string name="searh_path">music</string>
 </resources>
