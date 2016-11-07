@@ -1,11 +1,15 @@
 package com.example.musicplayer;
 
+import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -57,6 +61,9 @@ public class MusicListActivity extends AppCompatActivity {
         mMusicUpdateTask = new MusicUpdateTask();
         mMusicUpdateTask.execute();
 
+        Intent i = new Intent(this, MusicService.class);
+        startService(i);
+        bindService(i, mServiceConnection, BIND_AUTO_CREATE);
 
     }
 
@@ -143,6 +150,21 @@ public class MusicListActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
         }
     }
+
+    private MusicService.MusicServiceIBinder mMusicService;
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // 这里的service参数，就是Service当中onBind()返回的Binder
+            mMusicService = (MusicService.MusicServiceIBinder) service;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            // 当Service遇到异常情况退出时，会通过这里通知绑定过它的组件
+        }
+    };
 
     public void onClick(View view) {
         switch (view.getId()) {
