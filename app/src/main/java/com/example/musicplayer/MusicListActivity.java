@@ -1,5 +1,6 @@
 package com.example.musicplayer;
 
+import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentUris;
@@ -13,7 +14,11 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.SeekBar;
@@ -46,7 +51,7 @@ public class MusicListActivity extends AppCompatActivity {
         mMusicListView = (ListView) findViewById(R.id.music_list);
         MusicItemAdapter adapter = new MusicItemAdapter(this, R.layout.music_item, mMusicList);
         mMusicListView.setAdapter(adapter);
-//        mMusicListView.setOnItemClickListener()
+        mMusicListView.setOnItemClickListener(mOnMusicItemClickListener);
 
         mPlayBtn = (Button) findViewById(R.id.play_btn);
         mPreBtn = (Button) findViewById(R.id.pre_btn);
@@ -66,6 +71,18 @@ public class MusicListActivity extends AppCompatActivity {
         bindService(i, mServiceConnection, BIND_AUTO_CREATE);
 
     }
+
+    private AdapterView.OnItemClickListener mOnMusicItemClickListener = new AdapterView.OnItemClickListener() {
+
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            if (mMusicService != null) {
+                // 通过MusicService提供的接口，把要添加的音乐交给MusicService处理
+                mMusicService.addPlayList(mMusicList.get(position));
+            }
+        }
+
+    };
 
     private class MusicUpdateTask extends AsyncTask<Object, MusicItem, Void> {
         List<MusicItem> mDataList = new ArrayList<MusicItem>();
@@ -87,7 +104,7 @@ public class MusicListActivity extends AppCompatActivity {
             };
 
             // 查询包含有music这个字段的文件
-            String where = MediaStore.Audio.Media.DATA + " like \"%" + getString(R.string.searh_path) + "%\"";
+            String where = MediaStore.Audio.Media.DATA + " like \"%" + getString(R.string.search_path) + "%\"";
 
             String[] keywords = null;
 
@@ -175,6 +192,57 @@ public class MusicListActivity extends AppCompatActivity {
             case R.id.pre_btn:
                 break;
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()) {
+            case R.id.play_list_menu:
+                // 响应用户对菜单的点击，显示播放列表
+                showPlayList();
+                break;
+        }
+
+        return true;
+    }
+
+    private void showPlayList() {
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        // 设置对话框的图标
+        builder.setIcon(R.drawable.ic_playlist);
+        // 设置对话框的显示标题
+        builder.setTitle(R.string.play_list);
+
+        // 获取播放列表，把播放列表中歌曲的名字取出组成新的列表
+        List<MusicItem> playList = mMusicService.getPlayList();
+        ArrayList<String> data = new ArrayList<String>();
+        for (MusicItem music : playList) {
+            data.add(music.name);
+        }
+
+        if (data.size() > 0) {
+            // 播放列表有曲目，显示音乐的名称
+            ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, data);
+            builder.setAdapter(adapter, null);
+        } else {
+            // 播放列表没有曲目，显示没有音乐
+            builder.setMessage(getString(R.string.no_song));
+        }
+
+        // 设置该对话框是可以自动取消的，例如当用户在空白处随便点击一下，对话框就会关闭消失
+        builder.setCancelable(true);
+
+        // 创建并显示对话框
+        builder.create().show();
+
     }
 
 }

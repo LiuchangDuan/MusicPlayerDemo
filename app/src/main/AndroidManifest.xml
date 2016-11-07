@@ -28,7 +28,7 @@
             android:name=".PlayListContentProvider"
             android:authorities="com.example.provider"
             android:enabled="true"
-            android:exported="true\" />
+            android:exported="true" />
 
     </application>
 

@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">MusicPlayer</string>
-    <string name="searh_path">music</string>
     <string name="duration">duration: %s</string>
+    <string name="no_song">No song</string>
+    <string name="play_list">Play list</string>
+    <string name="search_path">music</string>
 </resources>

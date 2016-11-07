@@ -43,6 +43,8 @@ public class MusicService extends Service {
         // 保存播放列表
         mPlayList = new ArrayList<MusicItem>();
 
+        initPlayingList();
+
     }
 
     @Override
@@ -55,12 +57,12 @@ public class MusicService extends Service {
         // 添加播放列表
         // 一次添加多首音乐
         public void addPlayList(List<MusicItem> items) {
-
+            addPlayListInner(items);
         }
 
         // 一次添加一首音乐
         public void addPlayList(MusicItem item) {
-
+            addPlayListInner(item);
         }
 
         // 播放播放列表中应该要播放的音乐
