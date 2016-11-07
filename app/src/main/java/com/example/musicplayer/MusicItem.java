@@ -34,6 +34,7 @@ public class MusicItem {
     public boolean equals(Object o) {
         MusicItem another = (MusicItem) o;
 
+        // 音乐的Uri相同，则说明两者相同
         return another.songUri.equals(this.songUri);
     }
 

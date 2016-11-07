@@ -1,11 +1,16 @@
 package com.example.musicplayer;
 
 import android.app.Service;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,9 +29,20 @@ public class MusicService extends Service {
 
     }
 
+    private List<MusicItem> mPlayList;
+
+    private ContentResolver mResolver;
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // 获取ContentProvider的解析器，避免以后每次使用的时候都要重新获取
+        mResolver = getContentResolver();
+
+        // 保存播放列表
+        mPlayList = new ArrayList<MusicItem>();
+
     }
 
     @Override
@@ -93,9 +109,9 @@ public class MusicService extends Service {
 //        }
 
         // 获取播放列表
-//        public List<MusicItem> getPlayList() {
-//
-//        }
+        public List<MusicItem> getPlayList() {
+            return mPlayList;
+        }
 
     }
 
@@ -105,6 +121,84 @@ public class MusicService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return mBinder;
+    }
+
+    private void addPlayListInner(List<MusicItem> items) {
+
+        // 清空数据库中的playlist_table
+        mResolver.delete(PlayListContentProvider.CONTENT_SONGS_URI, null, null);
+
+        // 清空缓存的播放列表
+        mPlayList.clear();
+
+        // 将每首音乐添加到播放列表的缓存和数据库中
+        for (MusicItem item : items) {
+            // 利用现成的代码，便于代码的维护
+            addPlayListInner(item);
+        }
+
+    }
+
+    /**
+     * 添加一首音乐
+     * @param item
+     */
+    private void addPlayListInner(MusicItem item) {
+
+        // 判断列表中是否已经存储过该音乐，如果存储过就不管它
+        if (mPlayList.contains(item)) {
+            return;
+        }
+
+        // 添加到播放列表的第一个位置
+        mPlayList.add(0, item);
+
+        // 将音乐信息保存到ContentProvider中
+        insertMusicItemToContentProvider(item);
+
+    }
+
+    // 访问ContentProvider，保存一条数据
+    private void insertMusicItemToContentProvider(MusicItem item) {
+        ContentValues cv = new ContentValues();
+        cv.put(DBHelper.NAME, item.name);
+        cv.put(DBHelper.DURATION, item.duration);
+        cv.put(DBHelper.LAST_PLAY_TIME, item.playedTime);
+        cv.put(DBHelper.SONG_URI, item.songUri.toString());
+        cv.put(DBHelper.ALBUM_URI, item.albumUri.toString());
+        Uri uri = mResolver.insert(PlayListContentProvider.CONTENT_SONGS_URI, cv);
+    }
+
+    /**
+     * 将数据库中现有的列表，加载到mPlayList当中
+     */
+    private void initPlayingList() {
+
+        mPlayList.clear();
+
+        Cursor cursor = mResolver.query(
+                PlayListContentProvider.CONTENT_SONGS_URI,
+                null,
+                null,
+                null,
+                null);
+
+        while (cursor.moveToNext()) {
+
+            String songUri = cursor.getString(cursor.getColumnIndexOrThrow(DBHelper.SONG_URI));
+            String albumUri = cursor.getString(cursor.getColumnIndexOrThrow(DBHelper.ALBUM_URI));
+            String name = cursor.getString(cursor.getColumnIndex(DBHelper.NAME));
+            long playedTime = cursor.getLong(cursor.getColumnIndexOrThrow(DBHelper.LAST_PLAY_TIME));
+            long duration = cursor.getLong(cursor.getColumnIndexOrThrow(DBHelper.DURATION));
+
+            MusicItem item = new MusicItem(Uri.parse(songUri), Uri.parse(albumUri), name, duration, playedTime);
+
+            mPlayList.add(item);
+
+        }
+
+        cursor.close();
+
     }
 
 }
