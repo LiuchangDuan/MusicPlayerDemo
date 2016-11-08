@@ -5,6 +5,7 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
@@ -29,13 +30,20 @@ public class MusicService extends Service {
 
     }
 
+    // 创建存储监听器的列表
+    private List<OnStateChangeListener> mListenerList = new ArrayList<OnStateChangeListener>();
+
     private List<MusicItem> mPlayList;
+
+    private MediaPlayer mMusicPlayer;
 
     private ContentResolver mResolver;
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        mMusicPlayer = new MediaPlayer();
 
         // 获取ContentProvider的解析器，避免以后每次使用的时候都要重新获取
         mResolver = getContentResolver();
@@ -92,12 +100,12 @@ public class MusicService extends Service {
 
         // 注册监听函数
         public void registerOnStateChangeListener(OnStateChangeListener l) {
-
+            registerOnStateChangeListenerInner(l);
         }
 
         // 注销监听函数
         public void unregisterOnStateChangeListener(OnStateChangeListener l) {
-
+            unregisterOnStateChangeListenerInner(l);
         }
 
         // 获取当前正在播放的音乐的信息
@@ -115,6 +123,16 @@ public class MusicService extends Service {
             return mPlayList;
         }
 
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        mMusicPlayer.release();
+
+        // 当MusicService销毁的时候，清空监听器列表
+        mListenerList.clear();
     }
 
     private final IBinder mBinder = new MusicServiceIBinder();
@@ -158,6 +176,16 @@ public class MusicService extends Service {
         // 将音乐信息保存到ContentProvider中
         insertMusicItemToContentProvider(item);
 
+    }
+
+    private void registerOnStateChangeListenerInner(OnStateChangeListener l) {
+        // 将监听器添加到列表
+        mListenerList.add(l);
+    }
+
+    private void unregisterOnStateChangeListenerInner(OnStateChangeListener l) {
+        // 将监听器从列表中移除
+        mListenerList.remove(l);
     }
 
     // 访问ContentProvider，保存一条数据
