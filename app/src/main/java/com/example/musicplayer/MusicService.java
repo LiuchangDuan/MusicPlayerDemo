@@ -11,6 +11,7 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +36,15 @@ public class MusicService extends Service {
 
     private List<MusicItem> mPlayList;
 
+    // 存放当前要播放的音乐
+    private MusicItem mCurrentMusicItem;
+
     private MediaPlayer mMusicPlayer;
 
     private ContentResolver mResolver;
+
+    // 当前是否为播放暂停状态
+    private boolean mPaused;
 
     @Override
     public void onCreate() {
@@ -51,8 +58,28 @@ public class MusicService extends Service {
         // 保存播放列表
         mPlayList = new ArrayList<MusicItem>();
 
+        mPaused = false;
+
         initPlayingList();
 
+        if (mCurrentMusicItem != null) {
+            prepareToPlay(mCurrentMusicItem);
+        }
+
+    }
+
+    // 将要播放的音乐载入MediaPlayer，但是并不播放
+    private void prepareToPlay(MusicItem item) {
+        try {
+            // 重置播放器状态
+            mMusicPlayer.reset();
+            // 设置播放音乐的地址
+            mMusicPlayer.setDataSource(MusicService.this, item.songUri);
+            // 准备播放音乐
+            mMusicPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -75,27 +102,27 @@ public class MusicService extends Service {
 
         // 播放播放列表中应该要播放的音乐
         public void play() {
-
+            playInner();
         }
 
         // 播放播放列表中的下一首音乐
         public void playNext() {
-
+            playNextInner();
         }
 
         // 播放播放列表中的上一首音乐
         public void playPre() {
-
+            playPreInner();
         }
 
         // 暂停播放
         public void pause() {
-
+            pauseInner();
         }
 
         // 将当前音乐播放的进度，拖动到指定的位置
         public void seekTo(int pos) {
-
+            seekToInner(pos);
         }
 
         // 注册监听函数
@@ -109,14 +136,14 @@ public class MusicService extends Service {
         }
 
         // 获取当前正在播放的音乐的信息
-//        public MusicItem getCurrentMusic() {
-//
-//        }
+        public MusicItem getCurrentMusic() {
+            return getCurrentMusicInner();
+        }
 
         // 当前音乐是否处于播放的状态
-//        public boolean isPlaying() {
-//
-//        }
+        public boolean isPlaying() {
+            return isPlayingInner();
+        }
 
         // 获取播放列表
         public List<MusicItem> getPlayList() {
@@ -178,6 +205,60 @@ public class MusicService extends Service {
 
     }
 
+    // 播放播放列表中，当前音乐的下一首音乐
+    private void playNextInner() {
+        int currentIndex = mPlayList.indexOf(mCurrentMusicItem);
+        if (currentIndex < mPlayList.size() - 1) {
+            // 获取当前播放（或者被加载）音乐的下一首音乐
+            // 如果后面有要播放的音乐，把那首音乐设置成要播放的音乐
+            // 并重新加载该音乐，开始播放
+            mCurrentMusicItem = mPlayList.get(currentIndex + 1);
+            playMusicItem(mCurrentMusicItem, true);
+        }
+    }
+
+    private void playInner() {
+        // 如果之前没有选定要播放的音乐，就选列表中的第一首音乐开始播放
+        if (mCurrentMusicItem == null && mPlayList.size() > 0) {
+            mCurrentMusicItem = mPlayList.get(0);
+        }
+
+        // 如果是从暂停状态恢复播放音乐，那么不需要重新加载音乐
+        // 如果是从完全没有播放过的状态开始播放音乐，那么就需要重新加载音乐
+        if (mPaused) {
+            playMusicItem(mCurrentMusicItem, false);
+        } else {
+            playMusicItem(mCurrentMusicItem, true);
+        }
+    }
+
+    private void playPreInner() {
+        int currentIndex = mPlayList.indexOf(mCurrentMusicItem);
+        if (currentIndex - 1 >= 0) {
+            // 获取当前播放（或者被加载）音乐的上一首音乐
+            // 如果前面有要播放的音乐，把那首音乐设置成要播放的音乐
+            // 并重新加载该音乐，开始播放
+            mCurrentMusicItem = mPlayList.get(currentIndex - 1);
+            playMusicItem(mCurrentMusicItem, true);
+        }
+    }
+
+    private void pauseInner() {
+        // 设置为暂停播放状态
+        mPaused = true;
+        // 暂停当前正在播放的音乐
+        mMusicPlayer.pause();
+        // 将播放状态的改变通知给监听者
+        for (OnStateChangeListener l : mListenerList) {
+            l.onPause(mCurrentMusicItem);
+        }
+    }
+
+    private void seekToInner(int pos) {
+        // 将音乐拖动到指定的时间
+        mMusicPlayer.seekTo(pos);
+    }
+
     private void registerOnStateChangeListenerInner(OnStateChangeListener l) {
         // 将监听器添加到列表
         mListenerList.add(l);
@@ -186,6 +267,16 @@ public class MusicService extends Service {
     private void unregisterOnStateChangeListenerInner(OnStateChangeListener l) {
         // 将监听器从列表中移除
         mListenerList.remove(l);
+    }
+
+    private MusicItem getCurrentMusicInner() {
+        // 返回当前正加载好的音乐
+        return mCurrentMusicItem;
+    }
+
+    private boolean isPlayingInner() {
+        // 返回当前的播放器是否正在播放音乐
+        return mMusicPlayer.isPlaying();
     }
 
     // 访问ContentProvider，保存一条数据
@@ -228,6 +319,34 @@ public class MusicService extends Service {
         }
 
         cursor.close();
+
+    }
+
+    // 播放音乐，根据reload标志位判断是非需要重新加载音乐
+    private void playMusicItem(MusicItem item, boolean reload) {
+        // 如果这里传入的是空值，就什么也不做
+        if (item == null) {
+            return;
+        }
+
+        if (reload) {
+            // 需要重新加载音乐
+            prepareToPlay(item);
+        }
+
+        // 开始播放，如果之前只是暂停播放，那么音乐将继续播放
+        mMusicPlayer.start();
+
+        // 将音乐设置到指定时间开始播放，时间单位为毫秒
+        seekToInner((int) item.playedTime);
+
+        // 将播放的状态通过监听器通知给监听者
+        for (OnStateChangeListener l : mListenerList) {
+            l.onPlay(item);
+        }
+
+        // 设置为非暂停播放状态
+        mPaused = false;
 
     }
 
