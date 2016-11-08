@@ -8,7 +8,9 @@ import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.support.annotation.Nullable;
 
 import java.io.IOException;
@@ -30,6 +32,35 @@ public class MusicService extends Service {
         void onPause(MusicItem item);
 
     }
+
+    // 定义循环发送的消息
+    private final int MSG_PROGRESS_UPDATE = 0;
+
+    // 定义处理消息的Handler
+    private Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_PROGRESS_UPDATE:
+                    // 将音乐的时长和当前播放的进度保存到MusicItem数据结构中
+                    mCurrentMusicItem.playedTime = mMusicPlayer.getCurrentPosition();
+                    mCurrentMusicItem.duration = mMusicPlayer.getDuration();
+
+                    // 通知监听者当前的播放进度
+                    for (OnStateChangeListener l : mListenerList) {
+                        l.onPlayProgressChange(mCurrentMusicItem);
+                    }
+
+                    // 将当前的播放进度保存到数据库中
+                    updateMusicItem(mCurrentMusicItem);
+
+                    // 间隔一秒发送一次更新播放进度的消息
+                    sendEmptyMessageDelayed(MSG_PROGRESS_UPDATE, 1000);
+
+                    break;
+            }
+        }
+    };
 
     // 创建存储监听器的列表
     private List<OnStateChangeListener> mListenerList = new ArrayList<OnStateChangeListener>();
@@ -156,10 +187,24 @@ public class MusicService extends Service {
     public void onDestroy() {
         super.onDestroy();
 
+        if (mMusicPlayer.isPlaying()) {
+            mMusicPlayer.stop();
+        }
+
         mMusicPlayer.release();
+
+        // 停止更新
+        mHandler.removeMessages(MSG_PROGRESS_UPDATE);
+
+        for (MusicItem item : mPlayList) {
+            if (item.thumb != null) {
+                item.thumb.recycle();
+            }
+        }
 
         // 当MusicService销毁的时候，清空监听器列表
         mListenerList.clear();
+
     }
 
     private final IBinder mBinder = new MusicServiceIBinder();
@@ -252,6 +297,8 @@ public class MusicService extends Service {
         for (OnStateChangeListener l : mListenerList) {
             l.onPause(mCurrentMusicItem);
         }
+        // 停止更新
+        mHandler.removeMessages(MSG_PROGRESS_UPDATE);
     }
 
     private void seekToInner(int pos) {
@@ -347,6 +394,22 @@ public class MusicService extends Service {
 
         // 设置为非暂停播放状态
         mPaused = false;
+
+        // 移除现有的更新消息，重新启动更新
+        mHandler.removeMessages(MSG_PROGRESS_UPDATE);
+        mHandler.sendEmptyMessage(MSG_PROGRESS_UPDATE);
+
+    }
+
+    // 将播放时间更新到ContentProvider中
+    private void updateMusicItem(MusicItem item) {
+
+        ContentValues cv = new ContentValues();
+        cv.put(DBHelper.DURATION, item.duration);
+        cv.put(DBHelper.LAST_PLAY_TIME, item.playedTime);
+
+        String strUri = item.songUri.toString();
+        mResolver.update(PlayListContentProvider.CONTENT_SONGS_URI, cv, DBHelper.SONG_URI + "=\"" + strUri + "\"", null);
 
     }
 
