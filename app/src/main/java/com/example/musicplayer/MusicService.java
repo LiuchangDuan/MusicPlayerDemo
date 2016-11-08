@@ -91,6 +91,8 @@ public class MusicService extends Service {
 
         mPaused = false;
 
+        mMusicPlayer.setOnCompletionListener(mOnCompletionListener);
+
         initPlayingList();
 
         if (mCurrentMusicItem != null) {
@@ -128,7 +130,7 @@ public class MusicService extends Service {
 
         // 一次添加一首音乐
         public void addPlayList(MusicItem item) {
-            addPlayListInner(item);
+            addPlayListInner(item, true);
         }
 
         // 播放播放列表中应该要播放的音乐
@@ -226,7 +228,7 @@ public class MusicService extends Service {
         // 将每首音乐添加到播放列表的缓存和数据库中
         for (MusicItem item : items) {
             // 利用现成的代码，便于代码的维护
-            addPlayListInner(item);
+            addPlayListInner(item, false);
         }
 
     }
@@ -235,7 +237,7 @@ public class MusicService extends Service {
      * 添加一首音乐
      * @param item
      */
-    private void addPlayListInner(MusicItem item) {
+    private void addPlayListInner(MusicItem item, boolean needPlay) {
 
         // 判断列表中是否已经存储过该音乐，如果存储过就不管它
         if (mPlayList.contains(item)) {
@@ -247,6 +249,12 @@ public class MusicService extends Service {
 
         // 将音乐信息保存到ContentProvider中
         insertMusicItemToContentProvider(item);
+
+        if (needPlay) {
+            // 添加完成后，开始播放
+            mCurrentMusicItem = mPlayList.get(0);
+            playInner();
+        }
 
     }
 
@@ -367,6 +375,11 @@ public class MusicService extends Service {
 
         cursor.close();
 
+        // 把第一首音乐作为默认的待播放的音乐
+        if (mPlayList.size() > 0) {
+            mCurrentMusicItem = mPlayList.get(0);
+        }
+
     }
 
     // 播放音乐，根据reload标志位判断是非需要重新加载音乐
@@ -400,6 +413,19 @@ public class MusicService extends Service {
         mHandler.sendEmptyMessage(MSG_PROGRESS_UPDATE);
 
     }
+
+    private MediaPlayer.OnCompletionListener mOnCompletionListener = new MediaPlayer.OnCompletionListener() {
+
+        @Override
+        public void onCompletion(MediaPlayer mp) {
+            // 将当前播放的音乐记录时间重置为0，更新到数据库
+            // 下次播放就可以从头开始
+            mCurrentMusicItem.playedTime = 0;
+            updateMusicItem(mCurrentMusicItem);
+            // 播放下一首音乐
+            playNextInner();
+        }
+    };
 
     // 将播放时间更新到ContentProvider中
     private void updateMusicItem(MusicItem item) {
