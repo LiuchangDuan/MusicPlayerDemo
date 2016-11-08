@@ -14,9 +14,12 @@ import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.SparseBooleanArray;
+import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -53,6 +56,11 @@ public class MusicListActivity extends AppCompatActivity {
         mMusicListView.setAdapter(adapter);
         mMusicListView.setOnItemClickListener(mOnMusicItemClickListener);
 
+        // 将音乐列表设置成多选modal模式
+        mMusicListView.setChoiceMode(AbsListView.CHOICE_MODE_MULTIPLE_MODAL);
+
+        mMusicListView.setMultiChoiceModeListener(mMultiChoiceListener);
+
         mPlayBtn = (Button) findViewById(R.id.play_btn);
         mPreBtn = (Button) findViewById(R.id.pre_btn);
         mNextBtn = (Button) findViewById(R.id.next_btn);
@@ -82,6 +90,60 @@ public class MusicListActivity extends AppCompatActivity {
             }
         }
 
+    };
+
+    private ListView.MultiChoiceModeListener mMultiChoiceListener = new AbsListView.MultiChoiceModeListener() {
+
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // 增加进入多选modal模式后的菜单栏菜单项
+            getMenuInflater().inflate(R.menu.music_choice_actionbar, menu);
+
+            return true;
+        }
+
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return true;
+        }
+
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.menu_play:
+                    // TODO
+                    // 这里添加点击添加到播放列表后的响应
+                    // 获取被选中的音乐项
+                    List musicList = new ArrayList<MusicItem>();
+                    SparseBooleanArray checkedResult = mMusicListView.getCheckedItemPositions();
+                    for (int i = 0; i < checkedResult.size(); i++) {
+                        if (checkedResult.valueAt(i)) {
+                            int pos = checkedResult.keyAt(i);
+                            MusicItem music = mMusicList.get(pos);
+                            musicList.add(music);
+                        }
+                    }
+
+                    // 调用MusicService提供的接口，把播放列表保存起来
+                    mMusicService.addPlayList(musicList);
+
+                    // 退出ListView的modal状态
+                    mode.finish();
+
+                    break;
+            }
+            return true;
+        }
+
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+
+        }
+
+        @Override
+        public void onItemCheckedStateChanged(ActionMode mode, int position, long id, boolean checked) {
+
+        }
     };
 
     private class MusicUpdateTask extends AsyncTask<Object, MusicItem, Void> {
