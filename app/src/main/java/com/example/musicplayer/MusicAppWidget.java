@@ -14,6 +14,9 @@ import android.widget.RemoteViews;
  */
 public class MusicAppWidget extends AppWidgetProvider {
 
+    // 保存各个小工具的id
+    private static int[] sAppWidgetIds;
+
     // 更新指定id的小工具界面
     private static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                         int appWidgetId, String musicName, boolean isPlaying, Bitmap thumb) {
@@ -72,9 +75,34 @@ public class MusicAppWidget extends AppWidgetProvider {
 
     }
 
+    // 对外提供的更新所有小工具的界面接口，需要传入音乐的名称、当前是否播放、音乐封面等参数
+    /**
+     * 对外提供的更新所有小工具的界面接口
+     * @param context
+     * @param musicName 音乐的名称
+     * @param isPlaying 当前是否播放
+     * @param thumb 音乐封面
+     */
+    public static void performUpdates(Context context, String musicName, boolean isPlaying, Bitmap thumb) {
+
+        // 如果没有小工具的id，就没法更新界面
+        if (sAppWidgetIds == null || sAppWidgetIds.length == 0) {
+            return;
+        }
+
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+
+        // 遍历每个桌面上的小工具，根据id逐个更新界面
+        for (int appWidgetId : sAppWidgetIds) {
+            updateAppWidget(context, appWidgetManager, appWidgetId, musicName, isPlaying, thumb);
+        }
+
+    }
+
     @Override
     public void onEnabled(Context context) {
         Intent i = new Intent(context, MusicService.class);
         context.startService(i);
     }
+
 }

@@ -122,6 +122,26 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
+        if (intent != null) {
+            // 获取App widget发来的操作命令
+            String action = intent.getAction();
+            if (ACTION_PLAY_MUSIC_PRE.equals(action)) {
+                // 播放前一首音乐
+                playPreInner();
+            } else if (ACTION_PLAY_MUSIC_NEXT.equals(action)) {
+                // 播放下一首音乐
+                playNextInner();
+            } else if (ACTION_PLAY_MUSIC_TOGGLE.equals(action)) {
+                // 根据当前播放的状态暂停或继续播放音乐
+                if (isPlayingInner()) {
+                    pauseInner();
+                } else {
+                    playInner();
+                }
+            }
+        }
+
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -312,6 +332,8 @@ public class MusicService extends Service {
         }
         // 停止更新
         mHandler.removeMessages(MSG_PROGRESS_UPDATE);
+        // 音乐暂停时更新到App widget
+        updateAppWidget(mCurrentMusicItem);
     }
 
     private void seekToInner(int pos) {
@@ -417,6 +439,9 @@ public class MusicService extends Service {
         mHandler.removeMessages(MSG_PROGRESS_UPDATE);
         mHandler.sendEmptyMessage(MSG_PROGRESS_UPDATE);
 
+        // 音乐播放时更新到App widget
+        updateAppWidget(mCurrentMusicItem);
+
     }
 
     private MediaPlayer.OnCompletionListener mOnCompletionListener = new MediaPlayer.OnCompletionListener() {
@@ -442,6 +467,19 @@ public class MusicService extends Service {
         String strUri = item.songUri.toString();
         mResolver.update(PlayListContentProvider.CONTENT_SONGS_URI, cv, DBHelper.SONG_URI + "=\"" + strUri + "\"", null);
 
+    }
+
+    // 将音乐的播放信息更新到App widget中
+    private void updateAppWidget(MusicItem item) {
+        if (item != null) {
+            // 创建音乐封面
+            if (item.thumb == null) {
+                ContentResolver res = getContentResolver();
+                item.thumb = Utils.createThumbFromUri(res, item.albumUri);
+            }
+            // 调用App widget提供的更新接口开始更新
+            MusicAppWidget.performUpdates(MusicService.this, item.name, isPlayingInner(), item.thumb);
+        }
     }
 
 }
