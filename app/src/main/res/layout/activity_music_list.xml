@@ -12,11 +12,13 @@
         android:layout_height="match_parent"
         android:layout_weight="1" />
 
+    <!-- 增加一条分隔线 -->
     <View
         android:layout_width="match_parent"
         android:layout_height="5dp"
         android:background="@color/colorContract" />
 
+    <!-- 界面控制区域 开始 -->
     <LinearLayout
         android:id="@+id/control_panel"
         android:layout_width="match_parent"
@@ -103,5 +105,6 @@
         </RelativeLayout>
 
     </LinearLayout>
+    <!-- 界面控制区域 结束 -->
 
 </LinearLayout>

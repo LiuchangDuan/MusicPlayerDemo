@@ -36,12 +36,19 @@ public class MusicListActivity extends AppCompatActivity {
 
     private List<MusicItem> mMusicList;
     private ListView mMusicListView;
+    // 播放和暂停使用的按钮
     private Button mPlayBtn;
+    // 前一首
     private Button mPreBtn;
+    // 下一首
     private Button mNextBtn;
+    // 音乐名称
     private TextView mMusicTitle;
+    // 播放时长
     private TextView mPlayedTime;
+    // 当前播放时间
     private TextView mDurationTime;
+    // 进度条
     private SeekBar mMusicSeekBar;
     private MusicUpdateTask mMusicUpdateTask;
 
@@ -79,6 +86,54 @@ public class MusicListActivity extends AppCompatActivity {
         bindService(i, mServiceConnection, BIND_AUTO_CREATE);
 
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        if (mMusicUpdateTask != null && mMusicUpdateTask.getStatus() == AsyncTask.Status.RUNNING) {
+            mMusicUpdateTask.cancel(true);
+        }
+
+        mMusicUpdateTask = null;
+
+//        mMusicService.unregisterOnStateChangeListener();
+
+        unbindService(mServiceConnection);
+
+        for (MusicItem item : mMusicList) {
+            if (item.thumb != null) {
+                item.thumb.recycle();
+                item.thumb = null;
+            }
+        }
+
+        mMusicList.clear();
+
+    }
+
+    // 进度条拖动的监听器
+    private SeekBar.OnSeekBarChangeListener mOnSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
+
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+            // 停止拖动时，根据进度条的位置来设定播放的位置
+            if (mMusicService != null) {
+                mMusicService.seekTo(seekBar.getProgress());
+            }
+        }
+
+    };
 
     private AdapterView.OnItemClickListener mOnMusicItemClickListener = new AdapterView.OnItemClickListener() {
 
@@ -247,11 +302,29 @@ public class MusicListActivity extends AppCompatActivity {
 
     public void onClick(View view) {
         switch (view.getId()) {
+            // 点击播放按钮
             case R.id.play_btn:
+                if (mMusicService != null) {
+                    if (!mMusicService.isPlaying()) {
+                        // 开始播放
+                        mMusicService.play();
+                    } else {
+                        // 暂停播放
+                        mMusicService.pause();
+                    }
+                }
                 break;
+            // 点击下一首按钮
             case R.id.next_btn:
+                if (mMusicService != null) {
+                    mMusicService.playNext();
+                }
                 break;
+            // 点击前一首按钮
             case R.id.pre_btn:
+                if (mMusicService != null) {
+                    mMusicService.playPre();
+                }
                 break;
         }
     }
