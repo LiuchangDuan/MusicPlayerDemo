@@ -97,7 +97,7 @@ public class MusicListActivity extends AppCompatActivity {
 
         mMusicUpdateTask = null;
 
-//        mMusicService.unregisterOnStateChangeListener();
+        mMusicService.unregisterOnStateChangeListener(mStateChangeListener);
 
         unbindService(mServiceConnection);
 
@@ -154,6 +154,9 @@ public class MusicListActivity extends AppCompatActivity {
             // 增加进入多选modal模式后的菜单栏菜单项
             getMenuInflater().inflate(R.menu.music_choice_actionbar, menu);
 
+            // 使控制区域不可操作
+            enableControlPanel(false);
+
             return true;
         }
 
@@ -192,7 +195,7 @@ public class MusicListActivity extends AppCompatActivity {
 
         @Override
         public void onDestroyActionMode(ActionMode mode) {
-
+            enableControlPanel(true);
         }
 
         @Override
@@ -200,6 +203,64 @@ public class MusicListActivity extends AppCompatActivity {
 
         }
     };
+
+    /**
+     * 设置控制区域是否可以操作
+     * @param enabled
+     */
+    private void enableControlPanel(boolean enabled) {
+        mPlayBtn.setEnabled(enabled);
+        mPlayBtn.setEnabled(enabled);
+        mNextBtn.setEnabled(enabled);
+        mMusicSeekBar.setEnabled(enabled);
+    }
+
+    // 实现监听器监听MusicService的变化
+    private MusicService.OnStateChangeListener mStateChangeListener = new MusicService.OnStateChangeListener() {
+
+        @Override
+        public void onPlayProgressChange(MusicItem item) {
+            // 更新播放进度信息
+            updatePlayingInfo(item);
+        }
+
+        @Override
+        public void onPlay(MusicItem item) {
+            // 更新播放按钮背景
+            mPlayBtn.setBackgroundResource(R.drawable.ic_pause);
+            updatePlayingInfo(item);
+            // 激活控制区域
+            enableControlPanel(true);
+        }
+
+        @Override
+        public void onPause(MusicItem item) {
+            // 更新播放按钮背景
+            mPlayBtn.setBackgroundResource(R.drawable.ic_play);
+            // 激活控制区域
+            enableControlPanel(true);
+        }
+
+    };
+
+    // 更新播放信息
+    private void updatePlayingInfo(MusicItem item) {
+        // 将毫秒单位的时间，转化成xx:xx形式的时间
+        String times = Utils.convertMSecondToTime(item.duration);
+        mDurationTime.setText(times);
+
+        times = Utils.convertMSecondToTime(item.playedTime);
+        mPlayedTime.setText(times);
+
+        // 设置进度条的最大值
+        mMusicSeekBar.setMax((int) item.duration);
+
+        // 设置进度条的当前值
+        mMusicSeekBar.setProgress((int) item.playedTime);
+
+        mMusicTitle.setText(item.name);
+
+    }
 
     private class MusicUpdateTask extends AsyncTask<Object, MusicItem, Void> {
         List<MusicItem> mDataList = new ArrayList<MusicItem>();
@@ -292,12 +353,33 @@ public class MusicListActivity extends AppCompatActivity {
         public void onServiceConnected(ComponentName name, IBinder service) {
             // 这里的service参数，就是Service当中onBind()返回的Binder
             mMusicService = (MusicService.MusicServiceIBinder) service;
+
+            // 注册监听器
+            mMusicService.registerOnStateChangeListener(mStateChangeListener);
+
+            MusicItem item = mMusicService.getCurrentMusic();
+
+            if (item == null) {
+                // 没有可播的音乐，是控制区域不可操作
+                enableControlPanel(false);
+                return;
+            } else {
+                // 根据当前被加载的音乐信息更新控制区域信息
+                updatePlayingInfo(item);
+            }
+
+            if (mMusicService.isPlaying()) {
+                // 如果音乐处于播放状态,将按钮背景设置成暂停图标
+                mPlayBtn.setBackgroundResource(R.drawable.ic_pause);
+            }
+
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             // 当Service遇到异常情况退出时，会通过这里通知绑定过它的组件
         }
+
     };
 
     public void onClick(View view) {
