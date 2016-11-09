@@ -11,7 +11,8 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MusicListActivity"
+        <activity
+            android:name=".MusicListActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,6 +31,18 @@
             android:authorities="com.example.provider"
             android:enabled="true"
             android:exported="true" />
+
+        <receiver android:name=".MusicAppWidget">
+
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_app_widget_info" />
+
+        </receiver>
 
     </application>
 

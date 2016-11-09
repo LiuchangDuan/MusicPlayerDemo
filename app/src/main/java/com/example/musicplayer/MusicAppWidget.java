@@ -99,6 +99,28 @@ public class MusicAppWidget extends AppWidgetProvider {
 
     }
 
+    /**
+     * 在MusicAppWidget的onUpdate()中
+     * 向已经启动的MusicService发送一个广播
+     * 告诉它App widget需要被更新一下
+     * @param context
+     * @param appWidgetManager
+     * @param appWidgetIds
+     */
+    @Override
+    public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+
+        sAppWidgetIds = appWidgetIds;
+
+        // 使用默认的参数更新App widget
+        performUpdates(context, context.getString(R.string.no_song), false, null);
+
+        // 发送广播给MusicService，让它调用接口，更新App widget
+        Intent updateIntent = new Intent(MusicService.ACTION_PLAY_MUSIC_UPDATE);
+        context.sendBroadcast(updateIntent);
+
+    }
+
     @Override
     public void onEnabled(Context context) {
         Intent i = new Intent(context, MusicService.class);

@@ -1,9 +1,12 @@
 package com.example.musicplayer;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -65,6 +68,7 @@ public class MusicService extends Service {
     public static final String ACTION_PLAY_MUSIC_PRE = "com.example.musicplayer.playpre";
     public static final String ACTION_PLAY_MUSIC_NEXT = "com.example.musicplayer.playnext";
     public static final String ACTION_PLAY_MUSIC_TOGGLE = "com.example.musicplayer.playtoggle";
+    // 定义广播名称
     public static final String ACTION_PLAY_MUSIC_UPDATE = "com.example.musicplayer.playupdate";
 
     // 创建存储监听器的列表
@@ -82,6 +86,18 @@ public class MusicService extends Service {
     // 当前是否为播放暂停状态
     private boolean mPaused;
 
+    // 定义ACTION_PLAY_MUSIC_UPDATE广播的监听器
+    private BroadcastReceiver mIntentReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (ACTION_PLAY_MUSIC_UPDATE.equals(action)) {
+                // 收到ACTION_PLAY_MUSIC_UPDATE广播，就更新App widget
+                updateAppWidget(mCurrentMusicItem);
+            }
+        }
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -97,6 +113,13 @@ public class MusicService extends Service {
         mPaused = false;
 
         mMusicPlayer.setOnCompletionListener(mOnCompletionListener);
+
+        // 注册监听器
+        // 当收到ACTION_PLAY_MUSIC_UPDATE广播的时候
+        // 将触发mIntentReceiver的onReceive()方法被调用
+        IntentFilter commandFilter = new IntentFilter();
+        commandFilter.addAction(ACTION_PLAY_MUSIC_UPDATE);
+        registerReceiver(mIntentReceiver, commandFilter);
 
         initPlayingList();
 
@@ -220,8 +243,14 @@ public class MusicService extends Service {
 
         mMusicPlayer.release();
 
+        // 注销监听器，防止内存泄漏
+        unregisterReceiver(mIntentReceiver);
+
         // 停止更新
         mHandler.removeMessages(MSG_PROGRESS_UPDATE);
+
+        // 当MusicService销毁的时候，清空监听器列表
+        mListenerList.clear();
 
         for (MusicItem item : mPlayList) {
             if (item.thumb != null) {
@@ -229,8 +258,7 @@ public class MusicService extends Service {
             }
         }
 
-        // 当MusicService销毁的时候，清空监听器列表
-        mListenerList.clear();
+        mPlayList.clear();
 
     }
 
@@ -255,6 +283,9 @@ public class MusicService extends Service {
             // 利用现成的代码，便于代码的维护
             addPlayListInner(item, false);
         }
+
+        mCurrentMusicItem = mPlayList.get(0);
+        playInner();
 
     }
 
