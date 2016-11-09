@@ -62,6 +62,11 @@ public class MusicService extends Service {
         }
     };
 
+    public static final String ACTION_PLAY_MUSIC_PRE = "com.example.musicplayer.playpre";
+    public static final String ACTION_PLAY_MUSIC_NEXT = "com.example.musicplayer.playnext";
+    public static final String ACTION_PLAY_MUSIC_TOGGLE = "com.example.musicplayer.playtoggle";
+    public static final String ACTION_PLAY_MUSIC_UPDATE = "com.example.musicplayer.playupdate";
+
     // 创建存储监听器的列表
     private List<OnStateChangeListener> mListenerList = new ArrayList<OnStateChangeListener>();
 
